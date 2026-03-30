@@ -1,5 +1,5 @@
 'use client'
-
+import BarkodOkuyucu from '@/components/BarkodOkuyucu'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -18,6 +18,27 @@ export default function StokGirisPage() {
   const [yukleniyor, setYukleniyor] = useState(false)
   const [basari, setBasari] = useState('')
   const [hata, setHata] = useState('')
+  const [kameraAcik, setKameraAcik] = useState(false)
+{/* Mevcut input'un hemen altına */}
+<button
+  onClick={() => setKameraAcik(true)}
+  className="w-full mt-2 flex items-center justify-center gap-2
+             bg-gray-100 hover:bg-gray-200 text-gray-700
+             py-3 rounded-xl text-sm font-medium transition-colors">
+  Kamera ile Okut
+</button>
+
+{/* Kamera bileşeni */}
+{kameraAcik && (
+  <BarkodOkuyucu
+    onOkutuldu={(barkod) => {
+      setBarkod(barkod)
+      setKameraAcik(false)
+      barkodAra()
+    }}
+    onKapat={() => setKameraAcik(false)}
+  />
+)}
 
   useEffect(() => {
     async function getir() {

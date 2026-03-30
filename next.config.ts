@@ -1,21 +1,10 @@
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-})
+import type { NextConfig } from 'next'
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  turbopack: {
-    root: __dirname,
-  },
+  allowedDevOrigins: ['192.168.1.111'],
 }
 
-module.exports = withPWA(nextConfig)
+export default nextConfig

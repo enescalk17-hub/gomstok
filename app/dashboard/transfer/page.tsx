@@ -1,5 +1,5 @@
 'use client'
-
+import BarkodOkuyucu from '@/components/BarkodOkuyucu'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -21,7 +21,25 @@ export default function TransferPage() {
   const [koliler, setKoliler] = useState<Koli[]>([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [filtre, setFiltre] = useState('hepsi')
+  const [kameraAcik, setKameraAcik] = useState(false)
+<button
+  onClick={() => setKameraAcik(true)}
+  className="w-full mt-2 flex items-center justify-center gap-2
+             bg-gray-100 hover:bg-gray-200 text-gray-700
+             py-3 rounded-xl text-sm font-medium">
+  Kamera ile Okut
+</button>
 
+{kameraAcik && (
+  <BarkodOkuyucu
+    onOkutuldu={(barkod) => {
+      setBarkod(barkod)
+      setKameraAcik(false)
+      barkodEkle()
+    }}
+    onKapat={() => setKameraAcik(false)}
+  />
+)}
   useEffect(() => { getir() }, [])
 
   async function getir() {
