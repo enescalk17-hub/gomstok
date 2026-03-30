@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import BarkodOkuyucu from '@/components/BarkodOkuyucu'
 
 type KoliSatir = {
   urun_id: string
@@ -26,6 +27,7 @@ export default function YeniTransferPage() {
   const [satirlar, setSatirlar] = useState<KoliSatir[]>([])
   const [hata, setHata] = useState('')
   const [yukleniyor, setYukleniyor] = useState(false)
+  const [kameraAcik, setKameraAcik] = useState(false)
 
   useEffect(() => {
     async function getir() {
@@ -41,34 +43,32 @@ export default function YeniTransferPage() {
     getir()
   }, [])
 
-  async function barkodEkle() {
-    if (!barkod.trim() || !kaynakId) return
+  async function barkodEkle(okunanBarkod?: string) {
+    const b = (okunanBarkod || barkod).trim()
+    if (!b || !kaynakId) return
     setHata('')
 
-    // Zaten listede var mı?
-    if (satirlar.find(s => s.barkod === barkod.trim())) {
+    if (satirlar.find(s => s.barkod === b)) {
       setSatirlar(prev => prev.map(s =>
-        s.barkod === barkod.trim() ? { ...s, adet: s.adet + 1 } : s
+        s.barkod === b ? { ...s, adet: s.adet + 1 } : s
       ))
       setBarkod('')
       return
     }
 
-    // Ürünü bul
     const { data: urun } = await supabase
       .from('urunler')
       .select(`
-        id, barkod,
+        id, barkod, dis_barkod,
         model:modeller(ad),
         renk:renkler(ad),
         beden:bedenler(ad)
       `)
-      .eq('barkod', barkod.trim())
+      .or(`barkod.eq.${b},dis_barkod.eq.${b}`)
       .single()
 
-    if (!urun) { setHata('Urun bulunamadi: ' + barkod); return }
+    if (!urun) { setHata('Urun bulunamadi: ' + b); return }
 
-    // Kaynaktaki stoku kontrol et
     const { data: stokKayit } = await supabase
       .from('stok')
       .select('miktar')
@@ -84,7 +84,7 @@ export default function YeniTransferPage() {
 
     setSatirlar(prev => [...prev, {
       urun_id: urun.id,
-      barkod: urun.barkod,
+      barkod: b,
       model: (urun.model as any)?.ad || '',
       renk: (urun.renk as any)?.ad || '',
       beden: (urun.beden as any)?.ad || '',
@@ -97,8 +97,7 @@ export default function YeniTransferPage() {
   function adetGuncelle(barkod: string, yeniAdet: number) {
     setSatirlar(prev => prev.map(s => {
       if (s.barkod !== barkod) return s
-      const adet = Math.max(1, Math.min(yeniAdet, s.mevcutStok))
-      return { ...s, adet }
+      return { ...s, adet: Math.max(1, Math.min(yeniAdet, s.mevcutStok)) }
     }))
   }
 
@@ -108,9 +107,8 @@ export default function YeniTransferPage() {
 
   function koliNoUret() {
     const tarih = new Date()
-    const yil = tarih.getFullYear()
     const rnd = Math.floor(Math.random() * 9000) + 1000
-    return 'KL-' + yil + '-' + rnd
+    return 'KL-' + tarih.getFullYear() + '-' + rnd
   }
 
   async function koliOlusturVeGonder() {
@@ -123,30 +121,33 @@ export default function YeniTransferPage() {
     const koliNo = koliNoUret()
     const koliBarkod = 'KB' + Date.now()
     const toplamAdet = satirlar.reduce((t, s) => t + s.adet, 0)
-    const { data: { user } } = await supabase.auth.getUser()
 
-    // Koliyi oluştur
-const { data: koli, error: koliHata } = await supabase
-  .from('koliler')
-  .insert({
-    koli_no: koliNo,
-    koli_barkod: koliBarkod,
-    kaynak_lokasyon_id: kaynakId,
-    hedef_lokasyon_id: hedefId,
-    durum: 'yolda',
-    toplam_adet: toplamAdet,
-    gonderilme: new Date().toISOString(),
-  })
+    const { data: koli, error: koliHata } = await supabase
+      .from('koliler')
+      .insert({
+        koli_no: koliNo,
+        koli_barkod: koliBarkod,
+        kaynak_lokasyon_id: kaynakId,
+        hedef_lokasyon_id: hedefId,
+        durum: 'yolda',
+        toplam_adet: toplamAdet,
+        gonderilme: new Date().toISOString(),
+      })
       .select()
       .single()
 
     if (koliHata || !koli) {
-      setHata('Koli olusturulamadi.')
+      setHata('Koli olusturulamadi: ' + (koliHata?.message || ''))
       setYukleniyor(false)
       return
     }
 
-    // Koli içeriğini ekle + stok düş + hareket kaydet
+    const { data: yoldaLok } = await supabase
+      .from('lokasyonlar')
+      .select('id')
+      .eq('tip', 'yolda')
+      .single()
+
     for (const satir of satirlar) {
       await supabase.from('koli_icerik').insert({
         koli_id: koli.id,
@@ -155,7 +156,6 @@ const { data: koli, error: koliHata } = await supabase
         durum: 'bekliyor',
       })
 
-      // Kaynaktan düş
       const { data: mevcut } = await supabase
         .from('stok')
         .select('id, miktar')
@@ -168,13 +168,6 @@ const { data: koli, error: koliHata } = await supabase
           .update({ miktar: mevcut.miktar - satir.adet })
           .eq('id', mevcut.id)
       }
-
-      // Yolda lokasyonuna ekle
-      const { data: yoldaLok } = await supabase
-        .from('lokasyonlar')
-        .select('id')
-        .eq('tip', 'yolda')
-        .single()
 
       if (yoldaLok) {
         const { data: yoldaMevcut } = await supabase
@@ -194,25 +187,34 @@ const { data: koli, error: koliHata } = await supabase
         }
       }
 
-      // Hareket kaydı
       await supabase.from('stok_hareketleri').insert({
         urun_id: satir.urun_id,
         lokasyon_id: kaynakId,
         hareket_tipi: 'transfer_cikis',
         miktar: -satir.adet,
         koli_id: koli.id,
-        yapan_id: user?.id,
         aciklama: koliNo + ' nolu koli ile gonderildi',
       })
     }
 
-    router.push('/dashboard/transfer?basari=' + koliNo)
+    router.push('/dashboard/transfer')
   }
 
   const toplamAdet = satirlar.reduce((t, s) => t + s.adet, 0)
 
   return (
     <div className="min-h-screen bg-gray-50">
+
+      {kameraAcik && (
+        <BarkodOkuyucu
+          onOkutuldu={(b) => {
+            setKameraAcik(false)
+            barkodEkle(b)
+          }}
+          onKapat={() => setKameraAcik(false)}
+        />
+      )}
+
       <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
         <div className="max-w-xl mx-auto flex items-center gap-3">
           <Link href="/dashboard/transfer" className="text-gray-400 hover:text-gray-600 text-xl">
@@ -265,7 +267,7 @@ const { data: koli, error: koliHata } = await supabase
         {/* Barkod Ekle */}
         <div className="bg-white rounded-2xl border border-gray-200 p-4">
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Urun Ekle (Barkod Okut)
+            Urun Ekle
           </label>
           <div className="flex gap-2">
             <input
@@ -276,14 +278,18 @@ const { data: koli, error: koliHata } = await supabase
               className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
-            <button onClick={barkodEkle}
+            <button onClick={() => barkodEkle()}
               className="px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium text-gray-700">
               Ekle
             </button>
           </div>
+          <button
+            onClick={() => setKameraAcik(true)}
+            className="w-full mt-2 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl text-sm font-medium transition-colors">
+            Kamera ile Okut
+          </button>
         </div>
 
-        {/* Hata */}
         {hata && (
           <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
             <p className="text-red-600 text-sm">{hata}</p>
@@ -299,7 +305,9 @@ const { data: koli, error: koliHata } = await supabase
             </div>
             {satirlar.map((satir, i) => (
               <div key={satir.barkod}
-                className={i < satirlar.length - 1 ? 'flex items-center justify-between px-4 py-3 border-b border-gray-50' : 'flex items-center justify-between px-4 py-3'}>
+                className={i < satirlar.length - 1
+                  ? 'flex items-center justify-between px-4 py-3 border-b border-gray-50'
+                  : 'flex items-center justify-between px-4 py-3'}>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center text-xs font-bold font-mono text-blue-700">
                     {satir.beden}
@@ -333,7 +341,6 @@ const { data: koli, error: koliHata } = await supabase
           </div>
         )}
 
-        {/* Gönder Butonu */}
         {satirlar.length > 0 && (
           <button
             onClick={koliOlusturVeGonder}
