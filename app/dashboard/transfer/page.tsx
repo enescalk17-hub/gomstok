@@ -1,5 +1,5 @@
 'use client'
-import BarkodOkuyucu from '@/components/BarkodOkuyucu'
+
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -11,7 +11,6 @@ type Koli = {
   durum: string
   toplam_adet: number
   olusturulma: string
-  gonderilme: string | null
   kaynak: { ad: string }
   hedef: { ad: string }
 }
@@ -21,33 +20,14 @@ export default function TransferPage() {
   const [koliler, setKoliler] = useState<Koli[]>([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [filtre, setFiltre] = useState('hepsi')
-  const [kameraAcik, setKameraAcik] = useState(false)
-<button
-  onClick={() => setKameraAcik(true)}
-  className="w-full mt-2 flex items-center justify-center gap-2
-             bg-gray-100 hover:bg-gray-200 text-gray-700
-             py-3 rounded-xl text-sm font-medium">
-  Kamera ile Okut
-</button>
 
-{kameraAcik && (
-  <BarkodOkuyucu
-    onOkutuldu={(barkod) => {
-      setBarkod(barkod)
-      setKameraAcik(false)
-      barkodEkle()
-    }}
-    onKapat={() => setKameraAcik(false)}
-  />
-)}
   useEffect(() => { getir() }, [])
 
   async function getir() {
     const { data } = await supabase
       .from('koliler')
       .select(`
-        id, koli_no, koli_barkod, durum, toplam_adet,
-        olusturulma, gonderilme,
+        id, koli_no, koli_barkod, durum, toplam_adet, olusturulma,
         kaynak:lokasyonlar!kaynak_lokasyon_id(ad),
         hedef:lokasyonlar!hedef_lokasyon_id(ad)
       `)
@@ -68,7 +48,7 @@ export default function TransferPage() {
   )
 
   function durumBadge(durum: string) {
-    const map: Record<string, string> = {
+    const renkMap: Record<string, string> = {
       hazirlaniyor:  'bg-gray-100 text-gray-600',
       yolda:         'bg-amber-50 text-amber-700',
       teslim_edildi: 'bg-green-50 text-green-700',
@@ -83,7 +63,7 @@ export default function TransferPage() {
       iade:          'Iade',
     }
     return (
-      <span className={map[durum] + ' text-xs font-medium px-2.5 py-1 rounded-lg'}>
+      <span className={(renkMap[durum] || 'bg-gray-100 text-gray-600') + ' text-xs font-medium px-2.5 py-1 rounded-lg'}>
         {adMap[durum] || durum}
       </span>
     )
@@ -119,7 +99,6 @@ export default function TransferPage() {
 
       <main className="max-w-4xl mx-auto p-4 space-y-4">
 
-        {/* Teslim Al Butonu - Yolda koli varsa belirgin göster */}
         {koliler.filter(k => k.durum === 'yolda').length > 0 && (
           <Link
             href="/dashboard/transfer/teslim"
@@ -131,17 +110,14 @@ export default function TransferPage() {
           </Link>
         )}
 
-        {/* Filtre Sekmeleri */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           {durumlar.map(d => (
             <button
               key={d.key}
               onClick={() => setFiltre(d.key)}
-              className={
-                filtre === d.key
-                  ? 'flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium bg-blue-600 text-white'
-                  : 'flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium bg-white text-gray-600 border border-gray-200'
-              }>
+              className={filtre === d.key
+                ? 'flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium bg-blue-600 text-white'
+                : 'flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium bg-white text-gray-600 border border-gray-200'}>
               {d.ad}
               <span className="ml-1.5 text-xs opacity-70">
                 ({koliler.filter(k => d.key === 'hepsi' || k.durum === d.key).length})
@@ -150,7 +126,6 @@ export default function TransferPage() {
           ))}
         </div>
 
-        {/* Koli Listesi */}
         {yukleniyor ? (
           <div className="text-center py-12 text-gray-400 text-sm">Yukleniyor...</div>
         ) : filtrelenmis.length === 0 ? (
@@ -191,13 +166,6 @@ export default function TransferPage() {
                       href={'/dashboard/transfer/teslim?koli=' + koli.koli_barkod}
                       className="text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg font-medium hover:bg-amber-100">
                       Teslim Al
-                    </Link>
-                  )}
-                  {koli.durum === 'hazirlaniyor' && (
-                    <Link
-                      href={'/dashboard/transfer/yeni?duzenle=' + koli.id}
-                      className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-200">
-                      Gonder
                     </Link>
                   )}
                 </div>
