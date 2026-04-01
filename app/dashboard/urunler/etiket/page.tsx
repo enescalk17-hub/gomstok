@@ -10,7 +10,6 @@ type Urun = {
   model_ad: string
   renk_ad: string
   beden_ad: string
-  fiyat: number | null
 }
 
 export default function TopluEtiketSayfasi() {
@@ -61,7 +60,7 @@ export default function TopluEtiketSayfasi() {
       const { data, error } = await supabase
         .from('urunler')
         .select(`
-          id, barkod, satis_fiyati,
+          id, barkod,
           model:modeller(ad),
           renk:renkler(ad),
           beden:bedenler(ad)
@@ -81,8 +80,7 @@ export default function TopluEtiketSayfasi() {
            barkod: d.barkod,
            model_ad: d.model?.ad || '',
            renk_ad: d.renk?.ad || '',
-           beden_ad: d.beden?.ad || '',
-           fiyat: d.satis_fiyati
+           beden_ad: d.beden?.ad || ''
         }))
         setUrunler(u)
         setSeciliUrunler({})
