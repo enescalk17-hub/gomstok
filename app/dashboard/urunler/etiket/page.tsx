@@ -24,24 +24,41 @@ export default function TopluEtiketSayfasi() {
   const [hepsiAdet, setHepsiAdet] = useState<number>(1)
 
   const [etiketTipi, setEtiketTipi] = useState<'gomlek' | 'kumas'>('gomlek')
+  // Kumaş State'leri
+  const [kumaslar, setKumaslar] = useState<any[]>([])
+  
   const [yazdirModu, setYazdirModu] = useState(false)
   const [hata, setHata] = useState('')
 
   useEffect(() => {
     async function getir() {
-      const { data } = await supabase.from('modeller').select('id, ad').order('ad')
-      setModeller(data || [])
+      if (etiketTipi === 'gomlek') {
+         const { data } = await supabase.from('modeller').select('id, ad').order('ad')
+         setModeller(data || [])
+      } else {
+         const { data: kData } = await supabase.from('kumaslar').select(`
+            id, renk, miktar_metre, kumas_barkod, en,
+            tur:kumas_turleri(ad),
+            desen:kumas_desenleri(ad),
+            tedarikci:tedarikciler(ad)
+         `).order('id', { ascending: false })
+         setKumaslar(kData || [])
+         setSecilenModelId('') // Reset
+      }
     }
     getir()
-  }, [])
+  }, [etiketTipi])
 
   useEffect(() => {
+    if (etiketTipi === 'kumas') return; // Kumaş modunda modelle aranmaz
+    
     if (!secilenModelId) {
       setUrunler([])
       return
     }
     async function urunleriGetir() {
-      const { data } = await supabase
+      setHata('')
+      const { data, error } = await supabase
         .from('urunler')
         .select(`
           id, barkod, satis_fiyati,
@@ -53,6 +70,11 @@ export default function TopluEtiketSayfasi() {
         .eq('aktif', true)
         .order('barkod')
         
+      if (error) {
+        setHata('Ürünler getirilirken hata oluştu: ' + error.message)
+        return
+      }
+
       if (data) {
         const u = data.map((d: any) => ({
            id: d.id,
@@ -63,20 +85,19 @@ export default function TopluEtiketSayfasi() {
            fiyat: d.satis_fiyati
         }))
         setUrunler(u)
-        
-        // Clear selection
         setSeciliUrunler({})
       }
     }
     urunleriGetir()
-  }, [secilenModelId])
+  }, [secilenModelId, etiketTipi])
 
   const topAdetUygula = () => {
      const yeni = { ...seciliUrunler }
-     urunler.forEach(u => {
-        if (!yeni[u.id]) yeni[u.id] = hepsiAdet;
-        else yeni[u.id] = hepsiAdet;
-     })
+     if (etiketTipi === 'gomlek') {
+        urunler.forEach(u => yeni[u.id] = hepsiAdet)
+     } else {
+        kumaslar.forEach(k => yeni[k.id] = hepsiAdet)
+     }
      setSeciliUrunler(yeni)
   }
 
@@ -107,13 +128,13 @@ export default function TopluEtiketSayfasi() {
      if (yazdirilacakEtiketSayisi === 0) return setHata("Lütfen en az 1 etiket adedi girin.")
      
      let zplOutput = ""
-     urunler.forEach(u => {
-        const adet = seciliUrunler[u.id]
-        if (!adet) return
-        
-        for(let i=0; i<adet; i++){
-          if (etiketTipi === 'gomlek') {
-            zplOutput += `^XA
+     
+     if (etiketTipi === 'gomlek') {
+        urunler.forEach(u => {
+           const adet = seciliUrunler[u.id]
+           if (!adet) return
+           for(let i=0; i<adet; i++){
+               zplOutput += `^XA
 ^CFA,20
 ^FO30,30^FDGOMSTOK^FS
 ^CFA,15
@@ -122,19 +143,25 @@ export default function TopluEtiketSayfasi() {
 ^BY2,2,60
 ^FO30,110^BC^FD${u.barkod}^FS
 ^XZ\n`
-          } else {
-             // Kumaş formatı ZPL (100x50 daha büyük)
-            zplOutput += `^XA
+             }
+        })
+     } else {
+        kumaslar.forEach(k => {
+           const adet = seciliUrunler[k.id]
+           if (!adet) return
+           for(let i=0; i<adet; i++){
+               zplOutput += `^XA
 ^CFA,30
 ^FO50,50^FDGOMSTOK KUMAS^FS
 ^CFA,20
-^FO50,100^FDModel: ${u.model_ad}^FS
+^FO50,100^FD${k.tur?.ad || ''} ${k.desen?.ad || ''}^FS
+^FO50,140^FDRenk: ${k.renk}^FS
 ^BY3,3,100
-^FO50,150^BC^FD${u.barkod}^FS
+^FO50,190^BC^FD${k.kumas_barkod}^FS
 ^XZ\n`
-          }
-        }
-     })
+           }
+        })
+     }
      
      navigator.clipboard.writeText(zplOutput).then(() => {
         alert("ZPL şablonu kopyalandı! Notepad'e veya Zebra aracına yapıştırabilirsiniz.")
@@ -174,39 +201,47 @@ export default function TopluEtiketSayfasi() {
            </div>
            <div className="no-print pt-20"></div>
 
-           {urunler.map(u => {
+           {etiketTipi === 'gomlek' && urunler.map(u => {
               const adet = seciliUrunler[u.id] || 0
               const basimlar = []
               for(let i=0; i<adet; i++) {
                  basimlar.push(
                     <div key={`${u.id}-${i}`} className="etiket-sahnesi border border-dashed border-gray-300 print:border-none print:m-0 mb-4 mx-auto">
-                       {etiketTipi === 'gomlek' ? (
-                          <div className="w-full text-center flex flex-col justify-between h-full">
-                             <div className="text-[10pt] font-black uppercase tracking-widest mt-1">MOTİF SHIRTS</div>
-                             <div className="text-[7pt] font-medium leading-tight truncate px-1">
-                               {u.model_ad}
-                             </div>
-                             <div className="text-[8pt] font-bold">
-                               {u.renk_ad} • {u.beden_ad}
-                             </div>
-                             <div className="flex-1 flex justify-center items-center mt-1">
-                                {/* Basit CSS Barkod Simülasyonu / Gerçekte SVG kütüphanesi kullanılmalı. */}
-                                <div className="text-[18pt] font-mono leading-none tracking-widest">*${u.barkod}*</div>
-                             </div>
-                             <div className="text-[6pt] font-mono tracking-widest mb-1">{u.barkod}</div>
-                          </div>
-                       ) : (
-                          <div className="w-full text-left flex flex-col justify-between h-full">
-                             <div className="text-[14pt] font-black uppercase mb-1">GÖMSTOK KUMAŞ</div>
-                             <div className="text-[10pt]"><span className="font-bold">Tür:</span> {u.model_ad}</div>
-                             <div className="text-[10pt]"><span className="font-bold">Renk:</span> {u.renk_ad}</div>
-                             <div className="text-[10pt]"><span className="font-bold">Metraj:</span> ______ mt.</div>
-                             <div className="flex-1 flex justify-start items-center mt-2">
-                                <div className="text-[20pt] font-mono leading-none tracking-widest">*${u.barkod}*</div>
-                             </div>
-                             <div className="text-[8pt] font-mono mt-1">{u.barkod}</div>
-                          </div>
-                       )}
+                        <div className="w-full text-center flex flex-col justify-between h-full">
+                           <div className="text-[10pt] font-black uppercase tracking-widest mt-1">MOTİF SHIRTS</div>
+                           <div className="text-[7pt] font-medium leading-tight truncate px-1">
+                             {u.model_ad}
+                           </div>
+                           <div className="text-[8pt] font-bold">
+                             {u.renk_ad} • {u.beden_ad}
+                           </div>
+                           <div className="flex-1 flex justify-center items-center mt-1">
+                              <div className="text-[18pt] font-mono leading-none tracking-widest">*${u.barkod}*</div>
+                           </div>
+                           <div className="text-[6pt] font-mono tracking-widest mb-1">{u.barkod}</div>
+                        </div>
+                    </div>
+                 )
+              }
+              return basimlar
+           })}
+
+           {etiketTipi === 'kumas' && kumaslar.map(k => {
+              const adet = seciliUrunler[k.id] || 0
+              const basimlar = []
+              for(let i=0; i<adet; i++) {
+                 basimlar.push(
+                    <div key={`${k.id}-${i}`} className="etiket-sahnesi border border-dashed border-gray-300 print:border-none print:m-0 mb-4 mx-auto">
+                        <div className="w-full text-left flex flex-col justify-between h-full">
+                           <div className="text-[14pt] font-black uppercase mb-1">GÖMSTOK KUMAŞ</div>
+                           <div className="text-[10pt]"><span className="font-bold">Tür:</span> {k.tur?.ad || ''} {k.desen?.ad || ''}</div>
+                           <div className="text-[10pt]"><span className="font-bold">Renk:</span> {k.renk}</div>
+                           <div className="text-[10pt]"><span className="font-bold">Tedarikçi:</span> {k.tedarikci?.ad || '-'}</div>
+                           <div className="flex-1 flex justify-start items-center mt-2">
+                              <div className="text-[20pt] font-mono leading-none tracking-widest">*${k.kumas_barkod}*</div>
+                           </div>
+                           <div className="text-[8pt] font-mono mt-1">{k.kumas_barkod}</div>
+                        </div>
                     </div>
                  )
               }
@@ -250,20 +285,22 @@ export default function TopluEtiketSayfasi() {
                    </div>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                   <h3 className="font-medium text-sm mb-3 text-gray-800">2. Model Seçimi</h3>
-                   <select 
-                      value={secilenModelId}
-                      onChange={e => setSecilenModelId(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-blue-500 bg-gray-50">
-                      <option value="">-- Lütfen Seçin --</option>
-                      {modeller.map(m => (
-                         <option key={m.id} value={m.id}>{m.ad}</option>
-                      ))}
-                   </select>
-                </div>
+                {etiketTipi === 'gomlek' && (
+                  <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                     <h3 className="font-medium text-sm mb-3 text-gray-800">2. Model Seçimi</h3>
+                     <select 
+                        value={secilenModelId}
+                        onChange={e => setSecilenModelId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-blue-500 bg-gray-50">
+                        <option value="">-- Lütfen Seçin --</option>
+                        {modeller.map(m => (
+                           <option key={m.id} value={m.id}>{m.ad}</option>
+                        ))}
+                     </select>
+                  </div>
+                )}
 
-                {urunler.length > 0 && (
+                {(urunler.length > 0 || kumaslar.length > 0) && (
                    <div className="bg-white rounded-2xl border border-gray-200 p-5">
                       <h3 className="font-medium text-sm mb-3 text-gray-800">Toplu Adet Atama</h3>
                       <div className="flex gap-2">
@@ -282,28 +319,33 @@ export default function TopluEtiketSayfasi() {
              <div className="md:col-span-2 space-y-4">
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col h-[500px]">
                    <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex justify-between items-center shrink-0">
-                      <span className="text-sm font-semibold text-gray-700">Ürün Listesi ({urunler.length})</span>
+                      <span className="text-sm font-semibold text-gray-700">Ürün Listesi ({etiketTipi === 'gomlek' ? urunler.length : kumaslar.length})</span>
                       <span className="text-xs text-gray-500">Seçili: {yazdirilacakEtiketSayisi} etiket</span>
                    </div>
                    
                    <div className="flex-1 overflow-y-auto p-0">
-                      {urunler.length === 0 ? (
+                      {(etiketTipi === 'gomlek' && urunler.length === 0) ? (
                          <div className="h-full flex flex-col items-center justify-center text-gray-400">
                            <p className="mb-2 text-2xl">📋</p>
-                           <p className="text-sm">Model seçildiğinde ürünler listelenecektir.</p>
+                           <p className="text-sm">Model seçtiğinizde veya modelinize ait ürün eklendiğinde burada listelenecektir.</p>
+                         </div>
+                      ) : (etiketTipi === 'kumas' && kumaslar.length === 0) ? (
+                         <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                           <p className="mb-2 text-2xl">🧶</p>
+                           <p className="text-sm">Sistemde hiç kumaş kaydı bulunmamaktadır.</p>
                          </div>
                       ) : (
                          <table className="w-full text-left text-sm whitespace-nowrap">
                             <thead className="bg-white text-gray-500 text-xs border-b border-gray-100 sticky top-0">
                                <tr>
-                                  <th className="px-4 py-3 font-medium">Beden</th>
+                                  <th className="px-4 py-3 font-medium">{etiketTipi === 'gomlek' ? 'Beden' : 'Tür/Desen'}</th>
                                   <th className="px-4 py-3 font-medium">Renk</th>
                                   <th className="px-4 py-3 font-medium">Barkod</th>
                                   <th className="px-4 py-3 font-medium text-right w-24">Yazdır. Adet</th>
                                </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                               {urunler.map(u => (
+                               {etiketTipi === 'gomlek' && urunler.map(u => (
                                   <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                                      <td className="px-4 py-3 font-bold font-mono text-xs">{u.beden_ad}</td>
                                      <td className="px-4 py-3 text-gray-700">{u.renk_ad}</td>
@@ -314,6 +356,23 @@ export default function TopluEtiketSayfasi() {
                                           min="0"
                                           value={seciliUrunler[u.id] || ''}
                                           onChange={e => handleAdetChange(u.id, parseInt(e.target.value) || 0)}
+                                          placeholder="0"
+                                          className="w-16 px-2 py-1 text-right border border-gray-200 rounded focus:ring-2 focus:ring-blue-500"
+                                        />
+                                     </td>
+                                  </tr>
+                               ))}
+                               {etiketTipi === 'kumas' && kumaslar.map(k => (
+                                  <tr key={k.id} className="hover:bg-gray-50 transition-colors">
+                                     <td className="px-4 py-3 font-bold text-xs">{k.tur?.ad || ''} {k.desen?.ad || ''}</td>
+                                     <td className="px-4 py-3 text-gray-700">{k.renk}</td>
+                                     <td className="px-4 py-3 font-mono text-gray-500 text-xs">{k.kumas_barkod}</td>
+                                     <td className="px-4 py-3 text-right">
+                                        <input 
+                                          type="number"
+                                          min="0"
+                                          value={seciliUrunler[k.id] || ''}
+                                          onChange={e => handleAdetChange(k.id, parseInt(e.target.value) || 0)}
                                           placeholder="0"
                                           className="w-16 px-2 py-1 text-right border border-gray-200 rounded focus:ring-2 focus:ring-blue-500"
                                         />
