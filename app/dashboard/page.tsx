@@ -82,6 +82,8 @@ export default async function DashboardPage() {
               <MenuKart href="/dashboard/cari"      ikon="💰" baslik="Cari"        aciklama="Fatura ve bakiye" />
               <MenuKart href="/dashboard/import"    ikon="📥" baslik="İçeri Aktar" aciklama="Excel yükleme" />
               <MenuKart href="/dashboard/kumaslar"  ikon="🧵" baslik="Kumaşlar"    aciklama="Kumaş takibi" />
+              <MenuKart href="/dashboard/musteriler" ikon="🏢" baslik="Müşteriler"  aciklama="Fason B2B firmalar" />
+              <MenuKart href="/dashboard/fason"     ikon="✂️" baslik="Fason Üretim" aciklama="İş emri & irsaliye" />
             </>
           )}
         </div>

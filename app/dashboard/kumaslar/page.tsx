@@ -15,6 +15,8 @@ type Kumas = {
   lokasyon: string
   tedarikci: string
   olusturulma: string
+  // Sprint 11: emanet kumaş
+  musteri_ad?: string | null
 }
 
 export default function KumaslarPage() {
@@ -28,6 +30,7 @@ export default function KumaslarPage() {
   const [desenler, setDesenler] = useState<any[]>([])
   const [lokasyonlar, setLokasyonlar] = useState<any[]>([])
   const [tedarikciler, setTedarikciler] = useState<any[]>([])
+  const [musteriler, setMusteriler] = useState<any[]>([])
 
   const [form, setForm] = useState({
     kumas_barkod: '',
@@ -40,6 +43,7 @@ export default function KumaslarPage() {
     lokasyon_id: '',
     maliyet_metre: '',
     notlar: '',
+    musteri_id: '',
   })
   const [kayit, setKayit] = useState(false)
   const [hata, setHata] = useState('')
@@ -50,25 +54,40 @@ export default function KumaslarPage() {
   }, [])
 
   async function getir() {
-    const { data } = await supabase
-      .from('kumas_stok')
-      .select('*')
-      .order('olusturulma', { ascending: false })
-    setKumaslar((data as Kumas[]) || [])
+    const [stokRes, musteriRes] = await Promise.all([
+      supabase.from('kumas_stok').select('*').order('olusturulma', { ascending: false }),
+      supabase.from('kumaslar').select('id, musteri_id, musteri:musteriler(ad)').not('musteri_id', 'is', null),
+    ])
+
+    const musteriMap: Record<string, string> = {}
+    for (const k of (musteriRes.data || [])) {
+      if (k.musteri_id && (k.musteri as any)?.ad) {
+        musteriMap[k.id] = (k.musteri as any).ad
+      }
+    }
+
+    const merged = (stokRes.data || []).map((k: any) => ({
+      ...k,
+      musteri_ad: musteriMap[k.id] || null,
+    }))
+
+    setKumaslar(merged as Kumas[])
     setYukleniyor(false)
   }
 
   async function getirFormVerileri() {
-    const [t, d, l, ted] = await Promise.all([
+    const [t, d, l, ted, mus] = await Promise.all([
       supabase.from('kumas_turleri').select('*').eq('aktif', true),
       supabase.from('kumas_desenleri').select('*').eq('aktif', true),
       supabase.from('lokasyonlar').select('*').in('tip', ['atolye', 'depo']).eq('aktif', true),
       supabase.from('tedarikciler').select('*').eq('aktif', true),
+      supabase.from('musteriler').select('*').eq('aktif', true).order('ad'),
     ])
     setTurler(t.data || [])
     setDesenler(d.data || [])
     setLokasyonlar(l.data || [])
     setTedarikciler(ted.data || [])
+    setMusteriler(mus.data || [])
 
     // Varsayılan lokasyon: Depo
     const depo = l.data?.find((x: any) => x.tip === 'depo')
@@ -95,6 +114,7 @@ export default function KumaslarPage() {
       lokasyon_id: form.lokasyon_id,
       maliyet_metre: form.maliyet_metre ? parseFloat(form.maliyet_metre) : null,
       notlar: form.notlar || null,
+      musteri_id: form.musteri_id || null,
     })
 
     if (error) {
@@ -109,7 +129,7 @@ export default function KumaslarPage() {
       kumas_barkod: '', tur_id: '', desen_id: '', renk: '',
       en_cm: '150', miktar_metre: '', tedarikci_id: '',
       lokasyon_id: lokasyonlar.find(l => l.tip === 'depo')?.id || '',
-      maliyet_metre: '', notlar: '',
+      maliyet_metre: '', notlar: '', musteri_id: '',
     })
     getir()
   }
@@ -326,6 +346,27 @@ export default function KumaslarPage() {
                 />
               </div>
 
+              {/* Emanet Müşteri (opsiyonel) */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Emanet Müşteri (Opsiyonel)
+                </label>
+                <select
+                  value={form.musteri_id}
+                  onChange={e => setForm(f => ({ ...f, musteri_id: e.target.value }))}
+                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Bize ait kumaş (Emanet değil)</option>
+                  {musteriler.map(m => (
+                    <option key={m.id} value={m.id}>{m.ad}</option>
+                  ))}
+                </select>
+                {form.musteri_id && (
+                  <p className="text-xs text-purple-600 mt-1">
+                    Bu kumaş müşteri emaneti olarak işaretlenecek.
+                  </p>
+                )}
+              </div>
+
               {/* Not */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -384,6 +425,13 @@ export default function KumaslarPage() {
                 className="bg-white rounded-2xl border border-gray-200 p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
+                    {k.musteri_ad && (
+                      <div className="inline-flex items-center gap-1 bg-purple-100 border border-purple-300 rounded-lg px-2 py-0.5 mb-1.5">
+                        <span className="text-xs font-black text-purple-700 uppercase tracking-wide">
+                          EMANET — {k.musteri_ad}
+                        </span>
+                      </div>
+                    )}
                     <p className="font-semibold text-gray-900">
                       {k.tur || 'Belirsiz'} — {k.desen || 'Duz'} — {k.renk}
                     </p>
