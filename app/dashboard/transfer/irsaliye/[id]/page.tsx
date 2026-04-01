@@ -13,8 +13,8 @@ export default async function IrsaliyeYazdirPage({ params }: { params: Promise<{
     .from('koliler')
     .select(`
       *,
-      kaynak:lokasyonlar!kaynak_lokasyon_id(ad, adres, telefon),
-      hedef:lokasyonlar!hedef_lokasyon_id(ad, adres, telefon)
+      kaynak:lokasyonlar!kaynak_lokasyon_id(*),
+      hedef:lokasyonlar!hedef_lokasyon_id(*)
     `)
     .eq('id', id)
     .single()
