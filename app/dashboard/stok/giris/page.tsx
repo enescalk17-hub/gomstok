@@ -36,8 +36,9 @@ export default function StokGirisPage() {
     getir()
   }, [])
 
-  async function barkodAra() {
-    if (!barkod.trim()) return
+  async function barkodAra(okunanBarkod?: string | any) {
+    const b = (typeof okunanBarkod === 'string' ? okunanBarkod : barkod).trim()
+    if (!b) return
     setAramaYapildi(true)
     setBulunanUrun(null)
     setHata('')
@@ -45,15 +46,15 @@ export default function StokGirisPage() {
     const { data } = await supabase
       .from('urunler')
       .select(`
-        id, barkod,
+        id, barkod, dis_barkod,
         koleksiyon:koleksiyonlar(ad),
         model:modeller(ad),
         renk:renkler(ad),
         beden:bedenler(ad)
       `)
-      .eq('barkod', barkod.trim())
+      .or(`barkod.eq.${b},dis_barkod.eq.${b}`)
       .eq('aktif', true)
-      .single()
+      .maybeSingle()
 
     if (!data) {
       setHata('Bu barkoda sahip ürün bulunamadı.')
@@ -116,15 +117,7 @@ export default function StokGirisPage() {
           onOkutuldu={(okunanKod) => {
             setBarkod(okunanKod)
             setKameraAcik(false)
-            // Okutulunca direkt araması için:
-            // State güncellemesi anında yansımaz, o yüzden fonksiyona parametre göndermek veya useEffect kullanmak lazım. 
-            // Veya sadece state guncellemesi yapin, kullanici kendisi Ara desin (zaten barkodEkle var).
-            // Stok girişindeki barkodAra state'teki barkodu okur.
-            // O yuzden asagidaki yontemi kullanmak daha guvenli:
-            setTimeout(() => {
-                const element = document.getElementById('barkod-arama-btn');
-                if(element) element.click();
-            }, 100);
+            barkodAra(okunanKod)
           }}
           onKapat={() => setKameraAcik(false)}
         />
