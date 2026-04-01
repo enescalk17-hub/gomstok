@@ -29,9 +29,13 @@ export default function TopluEtiketSayfasi() {
   const [rfidModu, setRfidModu] = useState(false)
   const [yazdirModu, setYazdirModu] = useState(false)
   const [hata, setHata] = useState('')
+  const [lokasyonlar, setLokasyonlar] = useState<any[]>([])
+  const [secilenBaslik, setSecilenBaslik] = useState('GOMSTOK')
 
   useEffect(() => {
     async function getir() {
+      const lokData = await supabase.from('lokasyonlar').select('id, ad').in('tip', ['magaza', 'depo']).order('ad');
+      if(lokData.data) setLokasyonlar(lokData.data);
       if (etiketTipi === 'gomlek') {
          const { data } = await supabase.from('modeller').select('id, ad').order('ad')
          setModeller(data || [])
@@ -135,7 +139,7 @@ export default function TopluEtiketSayfasi() {
            for(let i=0; i<adet; i++){
                 const rfidTag = rfidModu ? `^RS8\n^RFW,E,,,^FD${u.barkod}^FS\n` : ""
                 zplOutput += `^XA\n${rfidTag}^CFA,20
-^FO30,30^FDGOMSTOK^FS
+^FO30,30^FD${secilenBaslik}^FS
 ^CFA,15
 ^FO30,60^FD${u.model_ad}^FS
 ^FO30,85^FD${u.renk_ad} - Beden: ${u.beden_ad}^FS
@@ -151,7 +155,7 @@ export default function TopluEtiketSayfasi() {
            for(let i=0; i<adet; i++){
                 const rfidTag = rfidModu ? `^RS8\n^RFW,E,,,^FD${k.kumas_barkod}^FS\n` : ""
                 zplOutput += `^XA\n${rfidTag}^CFA,30
-^FO50,50^FDGOMSTOK KUMAS^FS
+^FO50,50^FD${secilenBaslik} KUMAS^FS
 ^CFA,20
 ^FO50,100^FD${k.tur?.ad || ''} ${k.desen?.ad || ''}^FS
 ^FO50,140^FDRenk: ${k.renk}^FS
@@ -207,7 +211,7 @@ export default function TopluEtiketSayfasi() {
                  basimlar.push(
                     <div key={`${u.id}-${i}`} className="etiket-sahnesi border border-dashed border-gray-300 print:border-none print:m-0 mb-4 mx-auto">
                         <div className="w-full text-center flex flex-col justify-between h-full">
-                           <div className="text-[10pt] font-black uppercase tracking-widest mt-1">MOTİF SHIRTS</div>
+                           <div className="text-[10pt] font-black uppercase tracking-widest mt-1">{secilenBaslik}</div>
                            <div className="text-[7pt] font-medium leading-tight truncate px-1">
                              {u.model_ad}
                            </div>
@@ -232,7 +236,7 @@ export default function TopluEtiketSayfasi() {
                  basimlar.push(
                     <div key={`${k.id}-${i}`} className="etiket-sahnesi border border-dashed border-gray-300 print:border-none print:m-0 mb-4 mx-auto">
                         <div className="w-full text-left flex flex-col justify-between h-full">
-                           <div className="text-[14pt] font-black uppercase mb-1">GÖMSTOK KUMAŞ</div>
+                           <div className="text-[14pt] font-black uppercase mb-1">{secilenBaslik} KUMAŞ</div>
                            <div className="text-[10pt]"><span className="font-bold">Tür:</span> {k.tur?.ad || ''} {k.desen?.ad || ''}</div>
                            <div className="text-[10pt]"><span className="font-bold">Renk:</span> {k.renk}</div>
                            <div className="text-[10pt]"><span className="font-bold">Tedarikçi:</span> {k.tedarikci?.ad || '-'}</div>
