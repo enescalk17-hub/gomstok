@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import BarkodOkuyucu from '@/components/BarkodOkuyucu'
+import { useUsbScanner } from '@/hooks/useUsbScanner'
 
 type KoliSatir = {
   urun_id: string
@@ -36,6 +37,10 @@ export default function YeniTransferPage() {
   const [soforTelefon, setSoforTelefon] = useState('')
   const [tahminiTeslim, setTahminiTeslim] = useState('')
   const [emailGonder, setEmailGonder] = useState(true)
+
+  useUsbScanner((okunanBarkod) => {
+    barkodEkle(okunanBarkod)
+  })
 
   useEffect(() => {
     async function getir() {

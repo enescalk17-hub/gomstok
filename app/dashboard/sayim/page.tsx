@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import BarkodOkuyucu from '@/components/BarkodOkuyucu'
+import { useUsbScanner } from '@/hooks/useUsbScanner'
 
 type SayimSatir = {
   urun_id: string
@@ -38,6 +39,13 @@ export default function SayimPage() {
   const [baslatiliyor, setBaslatiliyor] = useState(false)
   const [hata, setHata] = useState('')
   const [tamamlandi, setTamamlandi] = useState(false)
+
+  useUsbScanner((okunanBarkod) => {
+    // Sadece aktif sayim durumundayken islem yapsin
+    if (ekran === 'aktif' && aktifOturum) {
+       barkodOkutKamera(okunanBarkod)
+    }
+  })
 
   useEffect(() => {
     getirLokasyonlar()

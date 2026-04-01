@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { useUsbScanner } from '@/hooks/useUsbScanner'
 
 type KoliDetay = {
   id: string
@@ -45,6 +46,11 @@ function TeslimIci() {
   // Sprint 5 Delivery Fields
   const [teslimAlanAd, setTeslimAlanAd] = useState('')
   const [teslimNotu, setTeslimNotu] = useState('')
+
+  useUsbScanner((okunanBarkod) => {
+    setKoliBarkod(okunanBarkod)
+    koliAra(okunanBarkod)
+  })
 
   useEffect(() => {
     if (baslangicBarkod) koliAra(baslangicBarkod)

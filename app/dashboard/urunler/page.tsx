@@ -80,7 +80,7 @@ export default function UrunlerPage() {
         </div>
 
         {/* Tanımlama Kartları */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <Link href="/dashboard/urunler/koleksiyonlar"
             className="bg-white border border-gray-200 rounded-xl p-3 
                        hover:border-purple-300 transition-colors block text-center">
@@ -104,6 +104,12 @@ export default function UrunlerPage() {
                        hover:border-purple-300 transition-colors block text-center">
             <div className="text-lg mb-1">📏</div>
             <div className="text-xs font-medium text-gray-700">Bedenler</div>
+          </Link>
+          <Link href="/dashboard/urunler/etiket"
+            className="bg-purple-50 border border-purple-200 rounded-xl p-3 
+                       hover:bg-purple-100 transition-colors block text-center">
+            <div className="text-lg mb-1">🖨️</div>
+            <div className="text-xs font-bold text-purple-700">Toplu Etiket</div>
           </Link>
         </div>
 

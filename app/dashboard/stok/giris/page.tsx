@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useUsbScanner } from '@/hooks/useUsbScanner'
 
 export default function StokGirisPage() {
   const supabase = createClient()
@@ -25,6 +26,13 @@ export default function StokGirisPage() {
   const [atolyeKumaslari, setAtolyeKumaslari] = useState<any[]>([])
   const [secilenKumasId, setSecilenKumasId] = useState('')
   const [kullanilanMetre, setKullanilanMetre] = useState('')
+
+  // USB Barkod Okuyucu Hook'u
+  useUsbScanner((okunanBarkod) => {
+    setBarkod(okunanBarkod)
+    setKameraAcik(false)
+    barkodAra(okunanBarkod)
+  })
 
   useEffect(() => {
     async function getir() {
