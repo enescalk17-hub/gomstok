@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useState, useTransition, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { isEmriOlustur, durumGuncelle, teslimEt, isEmriSil } from './actions'
@@ -38,6 +38,14 @@ const DURUM_ETIKET: Record<string, { label: string; cls: string }> = {
 }
 
 export default function FasonPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400 text-sm">Yükleniyor...</div>}>
+      <FasonIcerik />
+    </Suspense>
+  )
+}
+
+function FasonIcerik() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const router = useRouter()
