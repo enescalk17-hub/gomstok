@@ -1,7 +1,7 @@
 {
-  "name": "GömStok",
+  "name": "GömStok Depo Yönetimi",
   "short_name": "GömStok",
-  "description": "Tekstil Stok Yönetim Sistemi",
+  "description": "GömStok Lojistik ve Depo Yönetim Sistemi",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#f9fafb",
@@ -9,12 +9,12 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
