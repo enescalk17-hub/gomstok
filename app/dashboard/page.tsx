@@ -66,6 +66,9 @@ export default async function DashboardPage() {
           {['admin', 'depo'].includes(rol) && (
             <MenuKart href="/dashboard/sayim"     ikon="📋" baslik="Sayım"       aciklama="Stok doğrulama" />
           )}
+          {['admin', 'atolye', 'depo'].includes(rol) && (
+            <MenuKart href="/dashboard/tedarikciler"  ikon="🏭" baslik="Tedarikçiler"  aciklama="Firma ve fason" />
+          )}
           {rol === 'admin' && (
             <>
               <MenuKart href="/dashboard/urunler"   ikon="📦" baslik="Ürünler"     aciklama="SKU & barkod" />

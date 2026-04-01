@@ -56,6 +56,7 @@ export async function proxy(request: NextRequest) {
         { path: '/dashboard/urunler', roles: [] }, // admin only
         { path: '/dashboard/import', roles: [] },
         { path: '/dashboard/kullanicilar', roles: [] },
+        { path: '/dashboard/tedarikciler', roles: ['atolye', 'depo'] },
         { path: '/dashboard/kumaslar', roles: [] },
         { path: '/dashboard/raporlar', roles: [] },
         { path: '/dashboard/sayim', roles: ['depo'] },
