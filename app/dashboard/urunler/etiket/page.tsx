@@ -26,6 +26,7 @@ export default function TopluEtiketSayfasi() {
   // Kumaş State'leri
   const [kumaslar, setKumaslar] = useState<any[]>([])
   
+  const [rfidModu, setRfidModu] = useState(false)
   const [yazdirModu, setYazdirModu] = useState(false)
   const [hata, setHata] = useState('')
 
@@ -132,8 +133,8 @@ export default function TopluEtiketSayfasi() {
            const adet = seciliUrunler[u.id]
            if (!adet) return
            for(let i=0; i<adet; i++){
-               zplOutput += `^XA
-^CFA,20
+                const rfidTag = rfidModu ? `^RS8\n^RFW,E,,,^FD${u.barkod}^FS\n` : ""
+                zplOutput += `^XA\n${rfidTag}^CFA,20
 ^FO30,30^FDGOMSTOK^FS
 ^CFA,15
 ^FO30,60^FD${u.model_ad}^FS
@@ -148,8 +149,8 @@ export default function TopluEtiketSayfasi() {
            const adet = seciliUrunler[k.id]
            if (!adet) return
            for(let i=0; i<adet; i++){
-               zplOutput += `^XA
-^CFA,30
+                const rfidTag = rfidModu ? `^RS8\n^RFW,E,,,^FD${k.kumas_barkod}^FS\n` : ""
+                zplOutput += `^XA\n${rfidTag}^CFA,30
 ^FO50,50^FDGOMSTOK KUMAS^FS
 ^CFA,20
 ^FO50,100^FD${k.tur?.ad || ''} ${k.desen?.ad || ''}^FS
@@ -281,6 +282,17 @@ export default function TopluEtiketSayfasi() {
                          Kumaş Topu (100x50mm)
                       </label>
                    </div>
+                </div>
+
+                <div className="bg-blue-50 rounded-2xl border border-blue-200 p-5">
+                   <h3 className="font-medium text-sm mb-3 text-blue-800 flex items-center gap-2"><span>📡</span> RFID Entegrasyonu</h3>
+                   <label className="flex items-center gap-3 text-sm text-blue-900 cursor-pointer">
+                      <input type="checkbox" checked={rfidModu} onChange={(e) => setRfidModu(e.target.checked)} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" />
+                      <div>
+                         <span className="font-bold block">Çipe Kodla (RFID Burn)</span>
+                         <span className="text-xs text-blue-700">Barkod numarasını, NFC/UHF etiketinin içine şifreler (ZPL ile).</span>
+                      </div>
+                   </label>
                 </div>
 
                 {etiketTipi === 'gomlek' && (
