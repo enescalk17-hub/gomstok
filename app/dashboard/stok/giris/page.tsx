@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 import BarkodOkuyucu from '@/components/BarkodOkuyucu'
 import { useEffect, useState } from 'react'
@@ -19,26 +20,6 @@ export default function StokGirisPage() {
   const [basari, setBasari] = useState('')
   const [hata, setHata] = useState('')
   const [kameraAcik, setKameraAcik] = useState(false)
-{/* Mevcut input'un hemen altına */}
-<button
-  onClick={() => setKameraAcik(true)}
-  className="w-full mt-2 flex items-center justify-center gap-2
-             bg-gray-100 hover:bg-gray-200 text-gray-700
-             py-3 rounded-xl text-sm font-medium transition-colors">
-  Kamera ile Okut
-</button>
-
-{/* Kamera bileşeni */}
-{kameraAcik && (
-  <BarkodOkuyucu
-    onOkutuldu={(barkod) => {
-      setBarkod(barkod)
-      setKameraAcik(false)
-      barkodAra()
-    }}
-    onKapat={() => setKameraAcik(false)}
-  />
-)}
 
   useEffect(() => {
     async function getir() {
@@ -129,6 +110,26 @@ export default function StokGirisPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Kamera bileşeni */}
+      {kameraAcik && (
+        <BarkodOkuyucu
+          onOkutuldu={(okunanKod) => {
+            setBarkod(okunanKod)
+            setKameraAcik(false)
+            // Okutulunca direkt araması için:
+            // State güncellemesi anında yansımaz, o yüzden fonksiyona parametre göndermek veya useEffect kullanmak lazım. 
+            // Veya sadece state guncellemesi yapin, kullanici kendisi Ara desin (zaten barkodEkle var).
+            // Stok girişindeki barkodAra state'teki barkodu okur.
+            // O yuzden asagidaki yontemi kullanmak daha guvenli:
+            setTimeout(() => {
+                const element = document.getElementById('barkod-arama-btn');
+                if(element) element.click();
+            }, 100);
+          }}
+          onKapat={() => setKameraAcik(false)}
+        />
+      )}
+
       <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
         <div className="max-w-xl mx-auto flex items-center gap-3">
           <Link href="/dashboard/stok"
@@ -186,6 +187,7 @@ export default function StokGirisPage() {
               autoFocus
             />
             <button
+              id="barkod-arama-btn"
               onClick={barkodAra}
               className="px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl
                          text-sm font-medium text-gray-700 transition-colors">
@@ -195,6 +197,14 @@ export default function StokGirisPage() {
           <p className="text-xs text-gray-400 mt-2">
             M3 terminal veya barkod okuyucu ile okutabilirsin — Enter'a basınca otomatik arar.
           </p>
+
+          <button
+            onClick={() => setKameraAcik(true)}
+            className="w-full mt-2 flex items-center justify-center gap-2
+                       bg-gray-100 hover:bg-gray-200 text-gray-700
+                       py-3 rounded-xl text-sm font-medium transition-colors">
+            Kamera ile Okut
+          </button>
         </div>
 
         {/* Ürün Bulunamadı */}
