@@ -21,6 +21,11 @@ export default function StokGirisPage() {
   const [hata, setHata] = useState('')
   const [kameraAcik, setKameraAcik] = useState(false)
 
+  // Kumaş Takibi State
+  const [atolyeKumaslari, setAtolyeKumaslari] = useState<any[]>([])
+  const [secilenKumasId, setSecilenKumasId] = useState('')
+  const [kullanilanMetre, setKullanilanMetre] = useState('')
+
   useEffect(() => {
     async function getir() {
       const { data } = await supabase
@@ -35,6 +40,30 @@ export default function StokGirisPage() {
     }
     getir()
   }, [])
+
+  useEffect(() => {
+    async function kumasGetir() {
+      if (!secilenLokasyon) return
+      const lok = lokasyonlar.find(l => l.id === secilenLokasyon)
+      if (lok?.tip !== 'atolye') {
+        setAtolyeKumaslari([])
+        return
+      }
+      
+      const { data: kums } = await supabase
+        .from('kumaslar')
+        .select(`
+          id, miktar_metre, renk, kumas_barkod,
+          tur:kumas_turleri(ad),
+          desen:kumas_desenleri(ad)
+        `)
+        .eq('lokasyon_id', secilenLokasyon)
+        .gt('miktar_metre', 0)
+        
+      setAtolyeKumaslari(kums || [])
+    }
+    kumasGetir()
+  }, [secilenLokasyon, lokasyonlar])
 
   async function barkodAra(okunanBarkod?: string | any) {
     const b = (typeof okunanBarkod === 'string' ? okunanBarkod : barkod).trim()
@@ -98,7 +127,29 @@ export default function StokGirisPage() {
       miktar: miktar,
       yapan_id: user?.id,
       aciklama: 'Manuel stok girişi',
+      kumas_id: secilenKumasId || null
     })
+
+    // Kumaştan düşme işlemi
+    if (secilenKumasId && kullanilanMetre && parseFloat(kullanilanMetre) > 0) {
+       const harcanan = parseFloat(kullanilanMetre)
+       const kumas = atolyeKumaslari.find(k => k.id === secilenKumasId)
+       if (kumas) {
+         const yeni_miktar = kumas.miktar_metre - harcanan
+         await supabase.from('kumaslar').update({ miktar_metre: yeni_miktar }).eq('id', secilenKumasId)
+         
+         // Kumaş log tut
+         await supabase.from('kumas_hareketleri').insert({
+           kumas_id: secilenKumasId,
+           islem_tipi: 'kesim',
+           miktar_metre: harcanan,
+           cikis_lokasyon_id: secilenLokasyon,
+           hedef_model_id: bulunanUrun.model?.id, // Hangi model için
+           olusturan_id: user?.id,
+           notlar: `${miktar} adet üretim girişi`
+         })
+       }
+    }
 
     const lok = lokasyonlar.find(l => l.id === secilenLokasyon)
     setBasari(`✅ ${miktar} adet "${bulunanUrun.model?.ad} ${bulunanUrun.renk?.ad} ${bulunanUrun.beden?.ad}" → ${lok?.ad} stokuna eklendi.`)
@@ -263,6 +314,42 @@ export default function StokGirisPage() {
                 +
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Opsiyonel Kumaş Eşleştirme (Sadece Atölye) */}
+        {bulunanUrun && atolyeKumaslari.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-4">
+             <label className="block text-sm font-medium text-gray-700 mb-2">
+               Kullanılan Kumaş (Opsiyonel)
+             </label>
+             <select 
+                value={secilenKumasId}
+                onChange={e => setSecilenKumasId(e.target.value)}
+                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 mb-3 bg-gray-50">
+                <option value="">-- Kumaş Eşleştirilebilir --</option>
+                {atolyeKumaslari.map(k => (
+                  <option key={k.id} value={k.id}>
+                    {k.tur?.ad || 'Tip Yok'} - {k.desen?.ad || 'Düz'} ({k.renk}) | Mevcut: {k.miktar_metre} mt.
+                  </option>
+                ))}
+             </select>
+             
+             {secilenKumasId && (
+               <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Bu partide kaç metre kumaş kullanıldı? (Stoğundan düşer)
+                  </label>
+                  <input 
+                    type="number"
+                    step="0.1"
+                    value={kullanilanMetre}
+                    onChange={e => setKullanilanMetre(e.target.value)}
+                    placeholder="Mecburi değil"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-blue-500"
+                  />
+               </div>
+             )}
           </div>
         )}
 

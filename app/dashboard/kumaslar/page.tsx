@@ -146,11 +146,18 @@ export default function KumaslarPage() {
               <p className="text-xs text-gray-500">{kumaslar.length} kumas kaydi</p>
             </div>
           </div>
-          <button
-            onClick={() => setFormAcik(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-2 rounded-xl">
-            + Kumas Ekle
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/kumaslar/transfer"
+              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-medium px-4 py-2 rounded-xl transition-colors">
+              Atölyeye Sevk
+            </Link>
+            <button
+              onClick={() => setFormAcik(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-2 rounded-xl transition-colors">
+              + Kumaş Ekle
+            </button>
+          </div>
         </div>
       </header>
 
