@@ -180,6 +180,7 @@ export default function StokGirisPage() {
               autoFocus
             />
             <button
+              type="button"
               id="barkod-arama-btn"
               onClick={barkodAra}
               className="px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl
@@ -192,6 +193,7 @@ export default function StokGirisPage() {
           </p>
 
           <button
+            type="button"
             onClick={() => setKameraAcik(true)}
             className="w-full mt-2 flex items-center justify-center gap-2
                        bg-gray-100 hover:bg-gray-200 text-gray-700
@@ -274,6 +276,7 @@ export default function StokGirisPage() {
         {/* Kaydet Butonu */}
         {bulunanUrun && (
           <button
+            type="button"
             onClick={stokEkle}
             disabled={yukleniyor}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400

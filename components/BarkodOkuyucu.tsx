@@ -19,10 +19,13 @@ export default function BarkodOkuyucu({ onOkutuldu, onKapat }: Props) {
     return () => { durdur() }
   }, [])
 
+  const tarayiciKilit = useRef(false)
+
   async function baslat() {
     try {
       const html5Qr = new Html5Qrcode(tarayiciId)
       html5QrRef.current = html5Qr
+      tarayiciKilit.current = false
 
       await html5Qr.start(
         { facingMode: 'environment' }, // Arka kamera
@@ -32,6 +35,10 @@ export default function BarkodOkuyucu({ onOkutuldu, onKapat }: Props) {
           aspectRatio: 2.0,
         },
         (decodedText) => {
+          // İlk okumada kilitle ki peş peşe tetiklenmesin
+          if (tarayiciKilit.current) return
+          tarayiciKilit.current = true
+
           // Barkod okundu
           durdur()
           onOkutuldu(decodedText)
