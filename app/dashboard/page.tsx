@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import StokKartlari from './StokKartlari'
+import StokUyarilariWidget from './StokUyarilariWidget'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -45,6 +46,11 @@ export default async function DashboardPage() {
       </header>
 
       <main className="max-w-4xl mx-auto p-4 space-y-6">
+
+        {/* Sprint 6: Stok Uyarıları Widget'i (Sadece Admin veya Depo) */}
+        {['admin', 'depo', 'atolye'].includes(rol) && (
+          <StokUyarilariWidget />
+        )}
 
         {/* Stok Özet Kartları */}
         <StokKartlari initialData={stokOzet || []} rol={rol} />

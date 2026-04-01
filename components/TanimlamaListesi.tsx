@@ -9,6 +9,7 @@ type Props = {
   baslik: string
   ikon: string
   kodAlani?: boolean  // kod girişi gerekiyor mu
+  stokLimitleriAlani?: boolean // kritik & optimal stok limits
 }
 
 type Kayit = {
@@ -17,14 +18,18 @@ type Kayit = {
   kod?: string
   sira?: number
   aktif: boolean
+  kritik_stok?: number
+  optimal_stok?: number
 }
 
-export default function TanimlamaListesi({ tablo, baslik, ikon, kodAlani = true }: Props) {
+export default function TanimlamaListesi({ tablo, baslik, ikon, kodAlani = true, stokLimitleriAlani = false }: Props) {
   const supabase = createClient()
   const [liste, setListe] = useState<Kayit[]>([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [yeniAd, setYeniAd] = useState('')
   const [yeniKod, setYeniKod] = useState('')
+  const [yeniKritik, setYeniKritik] = useState('5')
+  const [yeniOptimal, setYeniOptimal] = useState('20')
   const [ekleniyor, setEkleniyor] = useState(false)
   const [hata, setHata] = useState('')
   const [formAcik, setFormAcik] = useState(false)
@@ -55,6 +60,8 @@ export default function TanimlamaListesi({ tablo, baslik, ikon, kodAlani = true 
     setYeniAd('')
     setYeniKod(otomatikKod(liste))
     setHata('')
+    setYeniKritik('5')
+    setYeniOptimal('20')
     setFormAcik(true)
   }
 
@@ -65,13 +72,17 @@ export default function TanimlamaListesi({ tablo, baslik, ikon, kodAlani = true 
     setEkleniyor(true)
     setHata('')
 
-const kayit: any = { ad: yeniAd.trim(), aktif: true }
-if (kodAlani) kayit.kod = yeniKod.trim()
-if (tablo === 'bedenler') kayit.sira = liste.length + 1
-if (tablo === 'koleksiyonlar') {
-  const yilKodu = parseInt(yeniKod.trim())
-  kayit.yil = yilKodu < 50 ? 2000 + yilKodu : 1900 + yilKodu
-}
+    const kayit: any = { ad: yeniAd.trim(), aktif: true }
+    if (kodAlani) kayit.kod = yeniKod.trim()
+    if (tablo === 'bedenler') kayit.sira = liste.length + 1
+    if (tablo === 'koleksiyonlar') {
+      const yilKodu = parseInt(yeniKod.trim())
+      kayit.yil = yilKodu < 50 ? 2000 + yilKodu : 1900 + yilKodu
+    }
+    if (stokLimitleriAlani) {
+      kayit.kritik_stok = parseInt(yeniKritik) || 5
+      kayit.optimal_stok = parseInt(yeniOptimal) || 20
+    }
 
     const { error } = await supabase.from(tablo).insert(kayit)
 
@@ -169,6 +180,39 @@ if (tablo === 'koleksiyonlar') {
                 </div>
               )}
 
+              {stokLimitleriAlani && (
+                <div className="flex gap-4">
+                   <div className="flex-1">
+                     <label className="block text-xs font-medium text-gray-600 mb-1">
+                       Kritik Stok Barajı *
+                     </label>
+                     <input
+                       type="number"
+                       value={yeniKritik}
+                       onChange={e => setYeniKritik(e.target.value)}
+                       min="0"
+                       className="w-full px-4 py-3 rounded-xl border border-orange-200 
+                                  focus:outline-none focus:ring-2 focus:ring-orange-500 
+                                  text-sm text-gray-900 bg-orange-50"
+                     />
+                   </div>
+                   <div className="flex-1">
+                     <label className="block text-xs font-medium text-gray-600 mb-1">
+                       Optimal Stok (Hedef) *
+                     </label>
+                     <input
+                       type="number"
+                       value={yeniOptimal}
+                       onChange={e => setYeniOptimal(e.target.value)}
+                       min="1"
+                       className="w-full px-4 py-3 rounded-xl border border-green-200 
+                                  focus:outline-none focus:ring-2 focus:ring-green-500 
+                                  text-sm text-gray-900 bg-green-50"
+                     />
+                   </div>
+                </div>
+              )}
+
               {hata && (
                 <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2">
                   <p className="text-red-600 text-xs">{hata}</p>
@@ -229,11 +273,18 @@ if (tablo === 'koleksiyonlar') {
                   )}
                   <div>
                     <p className="text-sm font-medium text-gray-900">{kayit.ad}</p>
-                    {kodAlani && (
-                      <p className="text-xs text-gray-400 font-mono">
-                        Barkodda: {kayit.kod}
-                      </p>
-                    )}
+                    <div className="flex gap-2">
+                       {kodAlani && (
+                         <p className="text-xs text-gray-400 font-mono">
+                           Barkodda: {kayit.kod}
+                         </p>
+                       )}
+                       {stokLimitleriAlani && (
+                         <p className="text-xs text-orange-500 font-mono">
+                           Kritik: {kayit.kritik_stok ?? 5} | Hedef: {kayit.optimal_stok ?? 20}
+                         </p>
+                       )}
+                    </div>
                   </div>
                 </div>
                 <button

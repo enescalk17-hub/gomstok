@@ -6,5 +6,6 @@ export default function ModellerPage() {
     baslik="Modeller"
     ikon="Model"
     kodAlani={true}
+    stokLimitleriAlani={true}
   />
 }

@@ -14,10 +14,34 @@ serve(async (req) => {
   }
 
   try {
-    const { koli_no, toplam_adet, plaka, tahmini_teslim, alici_email } = await req.json()
+    const reqData = await req.json()
+    // Yeni genel mail yapısı
+    const genSubject = reqData.subject
+    const genContent = reqData.content
+    const genTo = reqData.to || reqData.alici_email || "magaza@gomstok.com"
+
+    // Eski koli yapısı uyumluluk
+    let finalSubject = genSubject
+    let finalContent = genContent
+
+    if (reqData.koli_no && !genSubject) {
+       const formattedDate = new Date(reqData.tahmini_teslim).toLocaleString('tr-TR')
+       finalSubject = `Yeni Sevkiyat: ${reqData.koli_no} Nolu Koli Yola Çıktı!`
+       finalContent = `
+        Merhaba,
+
+        Tesisinize yeni bir sevkiyat yola çıkmıştır.
+
+        İrsaliye / Koli No: ${reqData.koli_no}
+        İçerik: ${reqData.toplam_adet} adet ürün
+        Araç Plakası: ${reqData.plaka}
+        Tahmini Varış: ${formattedDate}
+
+        GömStok Lojistik Sistemi
+       `
+    }
 
     // SMTP İstemcisini oluştur (Supabase Secrets üzerinden beslenmelidir)
-    // supabase secrets set SMTP_HOSTNAME=smtp.gmail.com
     const client = new SmtpClient()
     
     await client.connectTLS({
@@ -27,24 +51,11 @@ serve(async (req) => {
       password: Deno.env.get('SMTP_PASSWORD') || "gizliSifre123",
     });
 
-    const formattedDate = new Date(tahmini_teslim).toLocaleString('tr-TR')
-
     await client.send({
       from: "sistem@gomstok.com",
-      to: alici_email || "magaza@gomstok.com",
-      subject: `Yeni Sevkiyat: ${koli_no} Nolu Koli Yola Çıktı!`,
-      content: `
-        Merhaba,
-
-        Tesisinize yeni bir sevkiyat yola çıkmıştır.
-
-        İrsaliye / Koli No: ${koli_no}
-        İçerik: ${toplam_adet} adet ürün
-        Araç Plakası: ${plaka}
-        Tahmini Varış: ${formattedDate}
-
-        GömStok Lojistik Sistemi
-      `,
+      to: genTo,
+      subject: finalSubject || "GömStok Bildirim",
+      content: finalContent || "İçerik bulunamadı.",
     });
 
     await client.close();
