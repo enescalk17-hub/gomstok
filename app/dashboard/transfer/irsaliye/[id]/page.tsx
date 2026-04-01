@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import PrintButton from '../PrintButton'
 
 // Server Component for fetching Waybill (İrsaliye) details
 export default async function IrsaliyeYazdirPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,13 +13,18 @@ export default async function IrsaliyeYazdirPage({ params }: { params: Promise<{
     .from('koliler')
     .select(`
       *,
-      kaynak:lokasyonlar!koliler_kaynak_lokasyon_id_fkey(ad, adres, telefon),
-      hedef:lokasyonlar!koliler_hedef_lokasyon_id_fkey(ad, adres, telefon)
+      kaynak:lokasyonlar!kaynak_lokasyon_id(ad, adres, telefon),
+      hedef:lokasyonlar!hedef_lokasyon_id(ad, adres, telefon)
     `)
     .eq('id', id)
     .single()
 
   if (error || !koli) {
+    if (error) {
+       console.error("SUPABASE İRSALİYE KOLI FETCH HATASI:", error);
+    } else {
+       console.error("İrsaliye: Koli bulunamadı, id:", id);
+    }
     return notFound()
   }
 
@@ -51,11 +57,7 @@ export default async function IrsaliyeYazdirPage({ params }: { params: Promise<{
         <Link href="/dashboard/transfer" className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded shadow-sm hover:bg-gray-50 transition-colors font-medium">
            Geri Dön
         </Link>
-        <button onClick={() => { /* Client side print için, ama RSC içindeyiz. Global `window.print` triggerlanmalı, aşağıda bir inline script kullanacağız.*/ }} 
-                className="bg-blue-600 border border-blue-600 text-white px-4 py-2 rounded shadow-sm hover:bg-blue-700 transition-colors font-medium cursor-pointer"
-                id="btn-print">
-           🖨️ PDF Seç & Yazdır
-        </button>
+        <PrintButton />
       </div>
 
       {/* İRSALİYE A4 KAĞIDI */}
@@ -65,11 +67,12 @@ export default async function IrsaliyeYazdirPage({ params }: { params: Promise<{
          <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
             <div>
                <h1 className="text-3xl font-black tracking-tight">GÖMSTOK</h1>
-               <h2 className="text-lg font-semibold text-gray-600 tracking-widest mt-1">SEVKİYAT İRSALİYESİ</h2>
+               <p className="text-xs font-bold text-gray-600 tracking-wide mt-1 uppercase">MOTİF SHIRTS &amp; Manufaktur</p>
+               <h2 className="text-lg font-semibold text-gray-800 tracking-widest mt-2">SEVKİYAT İRSALİYESİ</h2>
             </div>
             <div className="text-right">
-               <p className="font-mono text-lg font-bold">No: {koli.irsaliye_no || koli.koli_no}</p>
-               <p className="text-gray-600 mt-1">Tarih: {fTarih(koli.gonderilme)}</p>
+               <p className="font-mono text-2xl font-black bg-gray-100 px-3 py-1 rounded inline-block">No: {koli.irsaliye_no || koli.koli_no}</p>
+               <p className="text-gray-600 mt-2 font-medium">Tarih: {fTarih(koli.gonderilme)}</p>
             </div>
          </div>
 
@@ -78,13 +81,21 @@ export default async function IrsaliyeYazdirPage({ params }: { params: Promise<{
             <div className="p-4 border border-gray-300 rounded-lg">
                <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Gönderici</p>
                <p className="font-bold text-lg">{koli.kaynak?.ad}</p>
-               <p className="text-gray-700 mt-1 whitespace-pre-line leading-tight">{koli.kaynak?.adres || 'Sistemde adres kayıtlı değil.'}</p>
+               {koli.kaynak?.adres ? (
+                 <p className="text-gray-700 mt-1 whitespace-pre-line leading-tight">{koli.kaynak?.adres}</p>
+               ) : (
+                 <p className="text-red-600 text-xs mt-1 border border-red-200 bg-red-50 p-2 rounded">Adres bilgisi eksik, lütfen lokasyon ayarlarından güncelleyin.</p>
+               )}
                <p className="text-gray-600 mt-3 font-mono text-xs">Tel: {koli.kaynak?.telefon || '-'}</p>
             </div>
             <div className="p-4 border border-gray-300 rounded-lg">
                <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Alıcı</p>
                <p className="font-bold text-lg">{koli.hedef?.ad}</p>
-               <p className="text-gray-700 mt-1 whitespace-pre-line leading-tight">{koli.hedef?.adres || 'Sistemde adres kayıtlı değil.'}</p>
+               {koli.hedef?.adres ? (
+                 <p className="text-gray-700 mt-1 whitespace-pre-line leading-tight">{koli.hedef?.adres}</p>
+               ) : (
+                 <p className="text-red-600 text-xs mt-1 border border-red-200 bg-red-50 p-2 rounded">Adres bilgisi eksik, lütfen lokasyon ayarlarından güncelleyin.</p>
+               )}
                <p className="text-gray-600 mt-3 font-mono text-xs">Tel: {koli.hedef?.telefon || '-'}</p>
             </div>
          </div>
@@ -149,13 +160,6 @@ export default async function IrsaliyeYazdirPage({ params }: { params: Promise<{
             GömStok Lojistik Yönetimi — Çıktı Alınma Tarihi: {new Date().toLocaleString('tr-TR')}
          </div>
       </div>
-      
-      {/* Client-side print script injected */}
-      <script dangerouslySetInnerHTML={{__html: `
-        document.getElementById('btn-print').addEventListener('click', function() {
-           window.print();
-        });
-      `}} />
     </div>
   )
 }
