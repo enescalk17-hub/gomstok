@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-export default function StokKartlari({ initialData }: { initialData: any[] }) {
+export default function StokKartlari({ initialData, rol }: { initialData: any[]; rol: string }) {
   const supabase = createClient()
   const [stokOzet, setStokOzet] = useState<any[]>(initialData || [])
 
@@ -26,10 +26,10 @@ export default function StokKartlari({ initialData }: { initialData: any[] }) {
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <KartBilgi renk="blue"   ikon={"🏭"} baslik="Atölye"      deger={toplamAtolye} />
-      <KartBilgi renk="green"  ikon={"🏪"} baslik="Mağaza"      deger={toplamMagaza} />
-      <KartBilgi renk="purple" ikon={"🏬"} baslik="Fatih Depo"  deger={toplamDepo}   />
-      <KartBilgi renk="amber"  ikon={"🚚"} baslik="Yolda"       deger={toplamYolda}  />
+      {['admin', 'atolye'].includes(rol) && <KartBilgi renk="blue"   ikon={"🏭"} baslik="Atölye"      deger={toplamAtolye} />}
+      {['admin', 'magaza'].includes(rol) && <KartBilgi renk="green"  ikon={"🏪"} baslik="Mağaza"      deger={toplamMagaza} />}
+      {['admin', 'depo'].includes(rol)   && <KartBilgi renk="purple" ikon={"🏬"} baslik="Fatih Depo"  deger={toplamDepo}   />}
+      {rol === 'admin'                   && <KartBilgi renk="amber"  ikon={"🚚"} baslik="Yolda"       deger={toplamYolda}  />}
     </div>
   )
 }

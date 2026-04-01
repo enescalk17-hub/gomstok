@@ -13,6 +13,13 @@ export default async function DashboardPage() {
     .from('genel_stok_ozet')
     .select('*')
 
+  const { data: kUser } = await supabase
+    .from('kullanicilar')
+    .select('rol')
+    .eq('id', user.id)
+    .single()
+  const rol = kUser?.rol || 'misafir'
+
   return (
     <div className="min-h-screen bg-gray-50">
       
@@ -40,17 +47,33 @@ export default async function DashboardPage() {
       <main className="max-w-4xl mx-auto p-4 space-y-6">
 
         {/* Stok Özet Kartları */}
-        <StokKartlari initialData={stokOzet || []} />
+        <StokKartlari initialData={stokOzet || []} rol={rol} />
 
         {/* Menü Kartları */}
         <div className="grid grid-cols-2 gap-3">
-          <MenuKart href="/dashboard/urunler"   ikon="📦" baslik="Ürünler"     aciklama="SKU & barkod yönetimi" />
-          <MenuKart href="/dashboard/transfer"  ikon="🚚" baslik="Transfer"    aciklama="Koli oluştur & gönder" />
-          <MenuKart href="/dashboard/stok"      ikon="📊" baslik="Stok"        aciklama="Lokasyon bazlı görünüm" />
-          <MenuKart href="/dashboard/raporlar"  ikon="📈" baslik="Raporlar"    aciklama="Hareketler & analiz" />
-          <MenuKart href="/dashboard/import"    ikon="📥" baslik="Import"      aciklama="Excel ile toplu ürün yükle" />
-          <MenuKart href="/dashboard/kumaslar"  ikon="🧵" baslik="Kumaşlar"    aciklama="Kumaş stok takibi" />
-          <MenuKart href="/dashboard/sayim"     ikon="📋" baslik="Sayım"       aciklama="Stok sayım ve doğrulama" />
+          {rol === 'admin' && (
+            <MenuKart href="/dashboard/kullanicilar" ikon="👥" baslik="Personel"   aciklama="Rol yetkilendirme" />
+          )}
+          {['admin', 'atolye', 'magaza', 'depo'].includes(rol) && (
+            <MenuKart href="/dashboard/transfer"  ikon="🚚" baslik="Transfer"    aciklama="Koli gönder/al" />
+          )}
+          {['admin', 'atolye'].includes(rol) && (
+            <MenuKart href="/dashboard/stok/giris" ikon="📥" baslik="Giriş"       aciklama="Üretime stok ekle" />
+          )}
+          {['admin', 'magaza', 'depo'].includes(rol) && (
+            <MenuKart href="/dashboard/stok"      ikon="📊" baslik="Stok"        aciklama="Lokasyon görünümü" />
+          )}
+          {['admin', 'depo'].includes(rol) && (
+            <MenuKart href="/dashboard/sayim"     ikon="📋" baslik="Sayım"       aciklama="Stok doğrulama" />
+          )}
+          {rol === 'admin' && (
+            <>
+              <MenuKart href="/dashboard/urunler"   ikon="📦" baslik="Ürünler"     aciklama="SKU & barkod" />
+              <MenuKart href="/dashboard/raporlar"  ikon="📈" baslik="Raporlar"    aciklama="Stok hareketleri" />
+              <MenuKart href="/dashboard/import"    ikon="📥" baslik="İçeri Aktar" aciklama="Excel yükleme" />
+              <MenuKart href="/dashboard/kumaslar"  ikon="🧵" baslik="Kumaşlar"    aciklama="Kumaş takibi" />
+            </>
+          )}
         </div>
 
       </main>
