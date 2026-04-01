@@ -29,6 +29,14 @@ export default function YeniTransferPage() {
   const [yukleniyor, setYukleniyor] = useState(false)
   const [kameraAcik, setKameraAcik] = useState(false)
 
+  // Lojistik States
+  const [irsaliyeNo, setIrsaliyeNo] = useState('')
+  const [plaka, setPlaka] = useState('')
+  const [sofor, setSofor] = useState('')
+  const [soforTelefon, setSoforTelefon] = useState('')
+  const [tahminiTeslim, setTahminiTeslim] = useState('')
+  const [emailGonder, setEmailGonder] = useState(true)
+
   useEffect(() => {
     async function getir() {
       const { data } = await supabase
@@ -115,6 +123,8 @@ export default function YeniTransferPage() {
     if (satirlar.length === 0) { setHata('Koli bos olamaz.'); return }
     if (!kaynakId || !hedefId) { setHata('Kaynak ve hedef secin.'); return }
     if (kaynakId === hedefId) { setHata('Kaynak ve hedef ayni olamaz.'); return }
+    if (!plaka || !sofor || !tahminiTeslim) { setHata('Lütfen plaka, şoför ve tahmini teslim tarihini eksiksiz girin.'); return }
+
     setYukleniyor(true)
     setHata('')
 
@@ -132,6 +142,14 @@ export default function YeniTransferPage() {
         durum: 'yolda',
         toplam_adet: toplamAdet,
         gonderilme: new Date().toISOString(),
+        
+        // Gelişmiş Lojistik Bilgileri (Sprint 5)
+        irsaliye_no: irsaliyeNo || null,
+        plaka: plaka || null,
+        sofor: sofor || null,
+        sofor_telefon: soforTelefon || null,
+        tahmini_teslim: new Date(tahminiTeslim).toISOString(),
+        email_gonderildi: false // Bunu tetikleyecek bir Edge function ileride kurgulanacak
       })
       .select()
       .single()
@@ -140,6 +158,22 @@ export default function YeniTransferPage() {
       setHata('Koli olusturulamadi: ' + (koliHata?.message || ''))
       setYukleniyor(false)
       return
+    }
+
+    if (emailGonder) {
+       // Mock or actual call to Supabase Edge Function
+       supabase.functions.invoke('send-email', {
+          body: {
+             koli_no: koliNo,
+             toplam_adet: toplamAdet,
+             plaka: plaka,
+             tahmini_teslim: new Date(tahminiTeslim).toISOString(),
+             // Normalde alici_email lokasyonun veritabanindan cekilebilir.
+             alici_email: 'sorumlu@gomstok.com' 
+          }
+       }).then(() => {
+          supabase.from('koliler').update({ email_gonderildi: true }).eq('id', koli.id).then()
+       }).catch(console.error)
     }
 
     const { data: yoldaLok } = await supabase
@@ -342,10 +376,43 @@ export default function YeniTransferPage() {
         )}
 
         {satirlar.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 mt-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-800 mb-4 border-b border-gray-100 pb-2">🚚 Lojistik / Sevkiyat Bilgileri</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                 <label className="block text-xs font-medium text-gray-600 mb-1">Araç Plakası *</label>
+                 <input type="text" value={plaka} onChange={e => setPlaka(e.target.value)} required placeholder="Örn: 34 ABC 123" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-blue-500" />
+              </div>
+              <div>
+                 <label className="block text-xs font-medium text-gray-600 mb-1">Şoför / Nakliyeci *</label>
+                 <input type="text" value={sofor} onChange={e => setSofor(e.target.value)} required placeholder="Şoför Ad Soyad" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-blue-500" />
+              </div>
+              <div>
+                 <label className="block text-xs font-medium text-gray-600 mb-1">Şoför Telefon</label>
+                 <input type="tel" value={soforTelefon} onChange={e => setSoforTelefon(e.target.value)} placeholder="0555..." className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-blue-500" />
+              </div>
+              <div>
+                 <label className="block text-xs font-medium text-gray-600 mb-1">Tahmini Teslim Zamanı *</label>
+                 <input type="datetime-local" value={tahminiTeslim} onChange={e => setTahminiTeslim(e.target.value)} required className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-blue-500" />
+              </div>
+              <div className="sm:col-span-2">
+                 <label className="block text-xs font-medium text-gray-600 mb-1">İrsaliye No (Opsiyonel)</label>
+                 <input type="text" value={irsaliyeNo} onChange={e => setIrsaliyeNo(e.target.value)} placeholder="Fiziksel irsaliye basıldıysa eşleştirin" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-blue-500" />
+              </div>
+            </div>
+            
+            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-2">
+               <input type="checkbox" id="emailGonder" checked={emailGonder} onChange={e => setEmailGonder(e.target.checked)} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+               <label htmlFor="emailGonder" className="text-sm text-gray-700">Alıcı lokasyon hedefine e-posta/SMTP üzerinden bildirim gönder</label>
+            </div>
+          </div>
+        )}
+
+        {satirlar.length > 0 && (
           <button
             onClick={koliOlusturVeGonder}
-            disabled={yukleniyor || !hedefId}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium py-4 rounded-2xl text-sm transition-colors">
+            disabled={yukleniyor || !hedefId || !plaka || !sofor || !tahminiTeslim}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium py-4 mt-2 rounded-2xl text-sm transition-colors shadow-sm">
             {yukleniyor
               ? 'Gonderiliyor...'
               : 'Koliyi Olustur ve Gonder (' + toplamAdet + ' urun)'}

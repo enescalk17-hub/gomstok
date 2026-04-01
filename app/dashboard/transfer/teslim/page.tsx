@@ -42,6 +42,10 @@ function TeslimIci() {
   const [yukleniyor, setYukleniyor] = useState(false)
   const [tamamlandi, setTamamlandi] = useState(false)
 
+  // Sprint 5 Delivery Fields
+  const [teslimAlanAd, setTeslimAlanAd] = useState('')
+  const [teslimNotu, setTeslimNotu] = useState('')
+
   useEffect(() => {
     if (baslangicBarkod) koliAra(baslangicBarkod)
   }, [])
@@ -183,6 +187,8 @@ function TeslimIci() {
       .update({
         durum: kismiKabul ? 'kismi_kabul' : 'teslim_edildi',
         teslim_alan_id: user?.id,
+        teslim_alan_ad: teslimAlanAd || null,
+        teslim_notu: teslimNotu || null,
         teslim_tarihi: new Date().toISOString(),
       })
       .eq('id', koli.id)
@@ -320,6 +326,17 @@ function TeslimIci() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+               <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Teslim Alan Ad Soyad *</label>
+                  <input type="text" value={teslimAlanAd} onChange={e => setTeslimAlanAd(e.target.value)} required placeholder="Örn: Ahmet Yılmaz" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-blue-500" />
+               </div>
+               <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Teslimat Notu (Opsiyonel)</label>
+                  <input type="text" value={teslimNotu} onChange={e => setTeslimNotu(e.target.value)} placeholder="Örn: 2 Koli hasarlı geldi..." className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-blue-500" />
+               </div>
             </div>
 
             <button

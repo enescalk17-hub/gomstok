@@ -11,6 +11,9 @@ type Koli = {
   durum: string
   toplam_adet: number
   olusturulma: string
+  plaka: string
+  sofor: string
+  irsaliye_no: string
   kaynak: { ad: string }
   hedef: { ad: string }
 }
@@ -28,6 +31,7 @@ export default function TransferPage() {
       .from('koliler')
       .select(`
         id, koli_no, koli_barkod, durum, toplam_adet, olusturulma,
+        plaka, sofor, irsaliye_no,
         kaynak:lokasyonlar!kaynak_lokasyon_id(ad),
         hedef:lokasyonlar!hedef_lokasyon_id(ad)
       `)
@@ -144,8 +148,9 @@ export default function TransferPage() {
                 className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-semibold text-gray-900 text-sm font-mono">
-                      {koli.koli_no}
+                    <p className="font-semibold text-gray-900 text-sm font-mono flex items-center gap-2">
+                       {koli.koli_no}
+                       {koli.plaka && <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">Arac: {koli.plaka}</span>}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {koli.kaynak?.ad} &rarr; {koli.hedef?.ad}
@@ -157,17 +162,26 @@ export default function TransferPage() {
                   <span>{koli.toplam_adet} gomlek</span>
                   <span>{tarihFormat(koli.olusturulma)}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-mono text-gray-400">
-                    Barkod: {koli.koli_barkod}
-                  </p>
-                  {koli.durum === 'yolda' && (
-                    <Link
-                      href={'/dashboard/transfer/teslim?koli=' + koli.koli_barkod}
-                      className="text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg font-medium hover:bg-amber-100">
-                      Teslim Al
-                    </Link>
-                  )}
+                <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                  <div className="flex flex-col gap-1">
+                     <p className="text-xs font-mono text-gray-400">Barkod: {koli.koli_barkod}</p>
+                     {koli.irsaliye_no && <p className="text-xs text-gray-500">İrsaliye: {koli.irsaliye_no}</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <Link
+                        href={`/dashboard/transfer/irsaliye/${koli.id}`}
+                        target="_blank"
+                        className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-200">
+                        📄 İrsaliye
+                     </Link>
+                     {koli.durum === 'yolda' && (
+                       <Link
+                         href={'/dashboard/transfer/teslim?koli=' + koli.koli_barkod}
+                         className="text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg font-medium hover:bg-amber-100">
+                         Teslim Al
+                       </Link>
+                     )}
+                  </div>
                 </div>
               </div>
             ))}
